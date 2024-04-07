@@ -8,3 +8,5 @@
  *
  * https://github.com/shixiongfei/nanorpc-http
  */
+
+export * from "./server.js";
