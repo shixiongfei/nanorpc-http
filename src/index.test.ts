@@ -8,3 +8,9 @@
  *
  * https://github.com/shixiongfei/nanorpc-http
  */
+
+import { createNanoRPCServer } from "./index.js";
+
+const rpc = createNanoRPCServer("");
+
+rpc.run(4000);
