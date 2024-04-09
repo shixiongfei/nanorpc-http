@@ -125,6 +125,13 @@ export const createExpress = (
       });
     }
 
+    if (Math.abs(Date.now() - timestamp) > 60 * 1000) {
+      return res.status(425).json({
+        code: 425,
+        error: { name: "Too Early", message: "Time difference is too large" },
+      });
+    }
+
     const rpc: NanoRPC<string, unknown[]> = {
       id,
       method,
