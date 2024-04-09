@@ -13,4 +13,5 @@ import { createNanoRPCServer } from "./index.js";
 
 const rpc = createNanoRPCServer("");
 
+rpc.on("add", (a: number, b: number) => a + b);
 rpc.run(4000);
