@@ -18,7 +18,7 @@ export class NanoRPCServer {
   private readonly methods: NanoMethods;
   private readonly app: ReturnType<typeof createExpress>;
 
-  constructor(secret: string, queued: boolean) {
+  constructor(secret: string, queued = false) {
     this.validators = createNanoValidator();
     this.methods = {};
     this.app = createExpress(secret, this.validators, this.methods, queued);
