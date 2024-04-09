@@ -18,10 +18,10 @@ export class NanoRPCServer {
   private readonly methods: NanoMethods;
   private readonly app: ReturnType<typeof createExpress>;
 
-  constructor(secret: string) {
+  constructor(secret: string, queued: boolean) {
     this.validators = createNanoValidator();
     this.methods = {};
-    this.app = createExpress(secret, this.validators, this.methods);
+    this.app = createExpress(secret, this.validators, this.methods, queued);
   }
 
   on<T, M extends string, P extends Array<unknown>>(
@@ -48,5 +48,5 @@ export class NanoRPCServer {
   }
 }
 
-export const createNanoRPCServer = (secret: string) =>
-  new NanoRPCServer(secret);
+export const createNanoRPCServer = (secret: string, queued = false) =>
+  new NanoRPCServer(secret, queued);

@@ -11,7 +11,8 @@
 
 import { createNanoRPCServer } from "./index.js";
 
-const rpc = createNanoRPCServer("");
+const rpc = createNanoRPCServer("52440ec2-2a22-4544-93a7-161dfc47239a");
 
 rpc.on("add", (a: number, b: number) => a + b);
+
 rpc.run(4000);

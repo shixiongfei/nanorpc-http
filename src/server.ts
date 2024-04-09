@@ -15,6 +15,7 @@ import crypto from "node:crypto";
 import express from "express";
 import cors from "cors";
 import { P, match } from "ts-pattern";
+import { Mutex } from "async-mutex";
 import { NanoRPC, NanoValidator, createNanoReply } from "nanorpc-validator";
 
 export type NanoMethods = {
@@ -27,7 +28,9 @@ export const createExpress = (
   secret: string,
   validators: NanoValidator,
   methods: NanoMethods,
+  queued: boolean,
 ) => {
+  const mutex = queued ? new Mutex() : undefined;
   const app = express();
 
   app.set("trust proxy", true);
@@ -78,6 +81,14 @@ export const createExpress = (
 
   app.post("/nanorpcs/:method", async (req, res) => {
     const method = req.params.method;
+    const func = methods[method];
+
+    if (!func) {
+      return res.status(405).json({
+        code: 405,
+        error: { name: "Method Not Allowed", message: "Missing Method" },
+      });
+    }
 
     const id = match(req.body.id)
       .with(P.number, R.toString)
@@ -134,18 +145,13 @@ export const createExpress = (
       });
     }
 
-    const func = methods[method];
-
-    if (!func) {
-      return res.status(405).json({
-        code: 405,
-        error: { name: "Method Not Allowed", message: "Missing Method" },
-      });
-    }
+    const doFunc = async () => {
+      const result = func(rpc);
+      return isPromise(result) ? await result : result;
+    };
 
     try {
-      const result = func(rpc);
-      const retval = isPromise(result) ? await result : result;
+      const retval = mutex ? await mutex.runExclusive(doFunc) : await doFunc();
       const reply = createNanoReply(id, 0, "OK", retval);
 
       return res.json({ code: 200, data: reply });
