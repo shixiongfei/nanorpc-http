@@ -20,7 +20,7 @@ import { NanoValidator, createNanoValidator } from "nanorpc-validator";
 import { NanoRPC, createNanoReply } from "nanorpc-validator";
 
 export class NanoRPCServer {
-  readonly validators: NanoValidator;
+  public readonly validators: NanoValidator;
   private readonly methods: {
     [method: string]: (
       rpc: NanoRPC<string, unknown[]>,
