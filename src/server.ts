@@ -39,6 +39,17 @@ export const createExpress = (
   app.use(express.urlencoded({ extended: true }));
 
   app.use((req, res, next) => {
+    const sign = match(req.body.sign)
+      .with(P.string, R.identity)
+      .otherwise(() => undefined);
+
+    if (R.isNil(sign)) {
+      return res.status(400).json({
+        code: 400,
+        error: { name: "Bad Request", message: "Missing Signature" },
+      });
+    }
+
     const params = R.map(
       ([key, value]) => `${key.toString()}=${value}`,
       R.toPairs(R.dissoc("sign", req.body)),
@@ -51,17 +62,6 @@ export const createExpress = (
         params,
       ),
     );
-
-    const sign = match(req.body.sign)
-      .with(P.string, R.identity)
-      .otherwise(() => undefined);
-
-    if (R.isNil(sign)) {
-      return res.status(400).json({
-        code: 400,
-        error: { name: "Bad Request", message: "Missing Signature" },
-      });
-    }
 
     const signature = crypto
       .createHmac("sha256", secret)
