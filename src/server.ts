@@ -180,7 +180,7 @@ export const createExpress = (
   app.use((_, res) =>
     res.status(404).json({
       code: 404,
-      error: { name: "Not Found", message: "Page Not Found" },
+      error: { name: "Not Found", message: "Not Found" },
     }),
   );
 
