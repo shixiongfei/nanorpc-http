@@ -37,10 +37,10 @@ export class NanoRPCServer {
     return this;
   }
 
-  run(port: number) {
+  run(port: number, listener?: () => void) {
     const server = http.createServer(this.app);
 
-    server.listen(port);
+    server.listen(port, listener);
 
     return () => {
       server.close();
