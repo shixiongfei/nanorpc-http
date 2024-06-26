@@ -19,9 +19,7 @@ import { Mutex } from "async-mutex";
 import { NanoRPC, NanoValidator, createNanoReply } from "nanorpc-validator";
 
 export type NanoMethods = {
-  [method: string]: (
-    rpc: NanoRPC<string, unknown[]>,
-  ) => unknown | Promise<unknown>;
+  [method: string]: (rpc: NanoRPC<unknown[]>) => unknown | Promise<unknown>;
 };
 
 export const createExpress = (
@@ -132,7 +130,7 @@ export const createExpress = (
       });
     }
 
-    const rpc: NanoRPC<string, unknown[]> = {
+    const rpc: NanoRPC<unknown[]> = {
       id,
       method,
       arguments: args,
