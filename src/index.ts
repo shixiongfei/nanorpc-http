@@ -19,6 +19,10 @@ import { NanoMethods, createExpress } from "./server.js";
 
 export * from "nanorpc-validator";
 
+export enum NanoRPCStatus {
+  OK = 0,
+}
+
 export enum NanoRPCErrCode {
   DuplicateMethod = -1,
 }

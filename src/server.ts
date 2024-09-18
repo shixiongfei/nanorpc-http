@@ -22,6 +22,7 @@ import {
   NanoValidator,
   createNanoReply,
 } from "nanorpc-validator";
+import { NanoRPCStatus } from "./index.js";
 
 export type NanoMethods = {
   [method: string]: (rpc: NanoRPC<unknown[]>) => unknown | Promise<unknown>;
@@ -157,7 +158,7 @@ export const createExpress = (
 
     try {
       const retval = mutex ? await mutex.runExclusive(doFunc) : await doFunc();
-      const reply = createNanoReply(id, 0, retval);
+      const reply = createNanoReply(id, NanoRPCStatus.OK, retval);
 
       return res.json({ code: 200, data: reply });
     } catch (error) {
