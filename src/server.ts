@@ -20,9 +20,9 @@ import {
   NanoRPC,
   NanoRPCError,
   NanoValidator,
+  createNanoRPCError,
   createNanoReply,
 } from "nanorpc-validator";
-import { NanoRPCStatus } from "./index.js";
 
 export type NanoMethods = {
   [method: string]: (rpc: NanoRPC<unknown[]>) => unknown | Promise<unknown>;
@@ -48,22 +48,19 @@ export const createExpress = (
       .otherwise(() => undefined);
 
     if (R.isNil(sign)) {
-      return res.status(400).json({
-        code: 400,
-        error: { name: "Bad Request", message: "Missing Signature" },
-      });
+      return res
+        .status(400)
+        .json(createNanoRPCError("", 400, 400, "Missing Signature"));
     }
-
-    const params = R.map(
-      ([key, value]) => `${key.toString()}=${value}`,
-      R.toPairs(R.dissoc("sign", req.body)),
-    );
 
     const payload = R.join(
       "\n",
       R.sort(
         R.comparator((a, b) => a.localeCompare(b) < 0),
-        params,
+        R.map(
+          (kv) => JSON.stringify(kv),
+          R.toPairs(R.dissoc("sign", req.body)),
+        ),
       ),
     );
 
@@ -74,47 +71,43 @@ export const createExpress = (
       .toString("hex");
 
     if (signature !== sign) {
-      return res.status(400).json({
-        code: 400,
-        error: { name: "Bad Request", message: "Check Signature Failed" },
-      });
+      return res
+        .status(400)
+        .json(createNanoRPCError("", 400, 400, "Check Signature Failed"));
     }
 
     next();
   });
 
   app.post("/nanorpcs/:method", async (req, res) => {
-    const method = req.params.method;
-    const func = methods[method];
-
-    if (!func) {
-      return res.status(405).json({
-        code: 405,
-        error: { name: "Method Not Allowed", message: "Missing Method" },
-      });
-    }
-
     const id = match(req.body.id)
       .with(P.number, R.toString)
       .with(P.string, R.identity)
       .otherwise(() => undefined);
 
     if (R.isNil(id)) {
-      return res.status(400).json({
-        code: 400,
-        error: { name: "Bad Request", message: "Missing ID" },
-      });
+      return res
+        .status(400)
+        .json(createNanoRPCError("", 400, 400, "Missing ID"));
     }
 
-    const params = match(req.body.arguments)
+    const method = req.params.method;
+    const func = methods[method];
+
+    if (!func) {
+      return res
+        .status(405)
+        .json(createNanoRPCError(id, 405, 405, "Missing Method"));
+    }
+
+    const params = match(req.body.params)
       .with(P.array(P.any), R.identity)
       .otherwise(() => undefined);
 
     if (R.isNil(params)) {
-      return res.status(400).json({
-        code: 400,
-        error: { name: "Bad Request", message: "Missing Arguments" },
-      });
+      return res
+        .status(400)
+        .json(createNanoRPCError(id, 400, 400, "Missing Arguments"));
     }
 
     const timestamp = match(req.body.timestamp)
@@ -123,17 +116,15 @@ export const createExpress = (
       .otherwise(() => undefined);
 
     if (R.isNil(timestamp) || isNaN(timestamp)) {
-      return res.status(400).json({
-        code: 400,
-        error: { name: "Bad Request", message: "Missing Timestamp" },
-      });
+      return res
+        .status(400)
+        .json(createNanoRPCError(id, 400, 400, "Missing Timestamp"));
     }
 
     if (Math.abs(Date.now() - timestamp) > 60 * 1000) {
-      return res.status(425).json({
-        code: 425,
-        error: { name: "Too Early", message: "Time difference is too large" },
-      });
+      return res
+        .status(425)
+        .json(createNanoRPCError(id, 425, 425, "Time difference is too large"));
     }
 
     const rpc: NanoRPC<unknown[]> = { id, method, params };
@@ -145,10 +136,9 @@ export const createExpress = (
         (err) => `${err.keyword}: ${err.instancePath}, ${err.message}`,
       );
 
-      return res.status(406).json({
-        code: 406,
-        error: { name: "Not Acceptable", message: lines.join("\n") },
-      });
+      return res
+        .status(406)
+        .json(createNanoRPCError(id, 406, 406, lines.join("\n")));
     }
 
     const doFunc = async () => {
@@ -158,29 +148,30 @@ export const createExpress = (
 
     try {
       const retval = mutex ? await mutex.runExclusive(doFunc) : await doFunc();
-      const reply = createNanoReply(id, NanoRPCStatus.OK, retval);
 
-      return res.json({ code: 200, data: reply });
+      return res.json(createNanoReply(id, 200, retval));
     } catch (error) {
-      const message =
-        typeof error === "string"
-          ? error
-          : error instanceof Error
-            ? error.message
-            : `${error}`;
-
-      return res.status(417).json({
-        code: error instanceof NanoRPCError ? error.code : 417,
-        error: { name: "Expectation Failed", message },
-      });
+      return res
+        .status(417)
+        .json(
+          error instanceof NanoRPCError
+            ? createNanoRPCError(rpc.id, 417, error.code, error.message)
+            : createNanoRPCError(
+                rpc.id,
+                417,
+                417,
+                typeof error === "string"
+                  ? error
+                  : error instanceof Error
+                    ? error.message
+                    : `${error}`,
+              ),
+        );
     }
   });
 
   app.use((_, res) =>
-    res.status(404).json({
-      code: 404,
-      error: { name: "Not Found", message: "Not Found" },
-    }),
+    res.status(404).json(createNanoRPCError("", 404, 404, "Not Found")),
   );
 
   return app;
