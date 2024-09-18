@@ -10,8 +10,18 @@
  */
 
 import http from "node:http";
-import { NanoValidator, createNanoValidator } from "nanorpc-validator";
+import {
+  NanoRPCError,
+  NanoValidator,
+  createNanoValidator,
+} from "nanorpc-validator";
 import { NanoMethods, createExpress } from "./server.js";
+
+export * from "nanorpc-validator";
+
+export enum NanoRPCErrCode {
+  DuplicateMethod = -1,
+}
 
 export class NanoRPCServer {
   public readonly validators: NanoValidator;
@@ -29,10 +39,19 @@ export class NanoRPCServer {
     func: (...args: P) => T | Promise<T>,
   ) {
     if (method in this.methods) {
-      throw new Error(`${method} method already registered`);
+      throw new NanoRPCError(
+        NanoRPCErrCode.DuplicateMethod,
+        `${method} method already registered`,
+      );
     }
 
-    this.methods[method] = (rpc) => func(...(rpc.arguments as P));
+    this.methods[method] = (rpc) => {
+      const params = (
+        Array.isArray(rpc.params) ? rpc.params : rpc.params ? [rpc.params] : []
+      ) as P;
+
+      return func(...params);
+    };
 
     return this;
   }

@@ -16,7 +16,12 @@ import express from "express";
 import cors from "cors";
 import { P, match } from "ts-pattern";
 import { Mutex } from "async-mutex";
-import { NanoRPC, NanoValidator, createNanoReply } from "nanorpc-validator";
+import {
+  NanoRPC,
+  NanoRPCError,
+  NanoValidator,
+  createNanoReply,
+} from "nanorpc-validator";
 
 export type NanoMethods = {
   [method: string]: (rpc: NanoRPC<unknown[]>) => unknown | Promise<unknown>;
@@ -100,11 +105,11 @@ export const createExpress = (
       });
     }
 
-    const args = match(req.body.arguments)
+    const params = match(req.body.arguments)
       .with(P.array(P.any), R.identity)
       .otherwise(() => undefined);
 
-    if (R.isNil(args)) {
+    if (R.isNil(params)) {
       return res.status(400).json({
         code: 400,
         error: { name: "Bad Request", message: "Missing Arguments" },
@@ -130,12 +135,7 @@ export const createExpress = (
       });
     }
 
-    const rpc: NanoRPC<unknown[]> = {
-      id,
-      method,
-      arguments: args,
-      timestamp,
-    };
+    const rpc: NanoRPC<unknown[]> = { id, method, params };
 
     const validator = validators.getValidator(method);
 
@@ -157,7 +157,7 @@ export const createExpress = (
 
     try {
       const retval = mutex ? await mutex.runExclusive(doFunc) : await doFunc();
-      const reply = createNanoReply(id, 0, "OK", retval);
+      const reply = createNanoReply(id, 0, retval);
 
       return res.json({ code: 200, data: reply });
     } catch (error) {
@@ -169,7 +169,7 @@ export const createExpress = (
             : `${error}`;
 
       return res.status(417).json({
-        code: 417,
+        code: error instanceof NanoRPCError ? error.code : 417,
         error: { name: "Expectation Failed", message },
       });
     }
